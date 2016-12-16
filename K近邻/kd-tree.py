@@ -4,7 +4,13 @@
 
 __author__='litterzhang'
 
+from matplotlib import pyplot as plt
+from matplotlib import animation
+from matplotlib.patches import Rectangle
+
 import copy
+import itertools
+import random
 
 class Node:
 	"""Summary
@@ -13,10 +19,10 @@ class Node:
 		"""Summary
 		
 		Args:
-		    v (TYPE): Description
-		    p (None, optional): Description
-		    l (None, optional): Description
-		    r (None, optional): Description
+			v (TYPE): Description
+			p (None, optional): Description
+			l (None, optional): Description
+			r (None, optional): Description
 		"""
 		self.p_node = p
 		self.l_node = l
@@ -28,7 +34,7 @@ class Node:
 		"""Summary
 		
 		Returns:
-		    TYPE: Description
+			TYPE: Description
 		"""
 		return (self.l==None and self.r==None)
 
@@ -36,7 +42,7 @@ class Node:
 		"""Summary
 		
 		Returns:
-		    TYPE: Description
+			TYPE: Description
 		"""
 		return self.p==None
 
@@ -44,11 +50,11 @@ class Node:
 		"""Summary
 		
 		Args:
-		    p (TYPE): Description
-		    l (TYPE): Description
+			p (TYPE): Description
+			l (TYPE): Description
 		
 		Returns:
-		    TYPE: Description
+			TYPE: Description
 		"""
 		p.l_node = l
 		l.p_node = p
@@ -57,36 +63,44 @@ class Node:
 		"""Summary
 		
 		Args:
-		    p (TYPE): Description
-		    r (TYPE): Description
+			p (TYPE): Description
+			r (TYPE): Description
 		
 		Returns:
-		    TYPE: Description
+			TYPE: Description
 		"""
 		p.r_node = r
 		r.p_node = p
 
 class Square:
-    """Summary
-    """
-    def __init__(self, p_tl, p_br):
-    	self.p_tl = copy.deepcopy(p_tl)
-    	self.p_br = copy.deepcopy(p_br)
-    	self.p_tr = [p_br[0], p_tl[1]]
-    	self.p_bl = [p_tl[0], p_br[1]]
+	"""Summary
+	"""
+	def __init__(self, p_tl, p_br):
+		self.p_tl = copy.deepcopy(p_tl)
+		self.p_br = copy.deepcopy(p_br)
+		self.p_tr = [p_br[0], p_tl[1]]
+		self.p_bl = [p_tl[0], p_br[1]]
 
-    def __str__(self):
-    	return 'Top Left: %s ; Bottom Right: %s.' % (self.p_tl, self.p_br)
+	def __str__(self):
+		return 'Top Left: %s ; Bottom Right: %s.' % (self.p_tl, self.p_br)
+
+	@property
+	def x(self):
+		return self.p_br[0]-self.p_bl[0]
+
+	@property
+	def y(self):
+		return self.p_tl[1]-self.p_bl[1]
 
 def init_kd(ds, k):
 	"""构造k-d树
 	
 	Args:
-	    ds (list): 数据集
-	    k (int): 数据的维度
+		ds (list): 数据集
+		k (int): 数据的维度
 	
 	Returns:
-	    Node: 根节点
+		Node: 根节点
 	"""
 
 	global history
@@ -146,35 +160,80 @@ def init_kd(ds, k):
 	return root
 
 def print_kd(r):
-    """打印k-d树
-    
-    Args:
-        r (Node): 根节点
-    """
-    nodes_n = [r, ]
+	"""打印k-d树
+	
+	Args:
+		r (Node): 根节点
+	"""
+	nodes_n = [r, ]
 
-    while len(nodes_n):
-    	nodes_nn = list()
+	while len(nodes_n):
+		nodes_nn = list()
 
-    	for node in nodes_n:
-    		if node:
-	    		print(node.value)
-    			nodes_nn.append(node.l_node)
-    			nodes_nn.append(node.r_node)
-    	nodes_n = nodes_nn
-    	print('\n')
+		for node in nodes_n:
+			if node:
+				print(node.value)
+				nodes_nn.append(node.l_node)
+				nodes_nn.append(node.r_node)
+		nodes_n = nodes_nn
+		print('\n')
+
+def draw_point(ds):
+	X, Y = [], []
+	for p in ds:
+		X.append(p[0][0])
+		Y.append(p[0][1])
+	plt.plot(X, Y, 'bo')
+	
+# initialization function: plot the background of each frame
+def init():
+	global ds
+
+	plt.axis([0, 10, 0, 10])
+	plt.grid(True)
+	plt.xlabel('x')
+	plt.ylabel('y')
+	draw_point(ds)
+
+def color_random():
+	r = random.randint(0, 255)
+	g = random.randint(0, 255)
+	b = random.randint(0, 255)
+
+	return '#%02X%02X%02X' % (r, g, b) 
+
+
+# animation function.  this is called sequentially
+def animate(i):
+	global history, currentAxis, colors
+
+	sq_f = history[i]
+	currentAxis.add_patch(Rectangle(sq_f.p_bl, sq_f.x, sq_f.y, color=color_random()))
+
+def draw():
+	global history, currentAxis, colors
+
+	# first set up the figure, the axis, and the plot element we want to animate
+	fig = plt.figure('K-D Tree')
+	ax = plt.axes(xlim=(0, 2), ylim=(-2, 2))
+	line, = ax.plot([], [], 'g', lw=2)
+	label = ax.text([], [], '')
+
+	currentAxis = plt.gca()
+	colors = itertools.cycle(["#FF6633", "g", "#3366FF", "c", "m", "y", '#EB70AA', '#0099FF', '#66FFFF'])
+
+	anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(history), interval=500, repeat=False, blit=False)
+	plt.show()
 
 if __name__=='__main__':
-	global history
+	global history, ds
 	history = list()
 
 	ds = [[(2, 3), ], [(5, 4), ], [(9, 6), ], [(4, 7), ], [(8, 1), ], [(7, 2), ]]
 
 	r = init_kd(ds, 2)
 
-	for sq in history:
-		print(sq)
-
+	draw()
 
 
 
