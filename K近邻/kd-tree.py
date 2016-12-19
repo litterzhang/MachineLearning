@@ -9,8 +9,8 @@ from matplotlib import animation
 from matplotlib.patches import Rectangle
 
 import copy
-import itertools
 import random
+import time
 
 class Node:
 	"""Summary
@@ -36,7 +36,7 @@ class Node:
 		Returns:
 			TYPE: Description
 		"""
-		return (self.l==None and self.r==None)
+		return (self.l_node==None and self.r_node==None)
 
 	def isRoot(self):
 		"""Summary
@@ -71,6 +71,9 @@ class Node:
 		"""
 		p.r_node = r
 		r.p_node = p
+
+	def __str__(self):
+		return 'Value: %s' % self.value
 
 class Square:
 	"""Summary
@@ -178,6 +181,66 @@ def print_kd(r):
 		nodes_n = nodes_nn
 		print('\n')
 
+def calc_dis(a, b, k):
+	dis = 0
+	for i in range(k):
+		dis += (a[i]-b[i])**2
+	dis **= 0.5
+	return dis
+
+def search_kd(r, k, p):
+	"""Summary
+	
+	Args:
+		r (TYPE): Description
+		k (TYPE): Description
+		p (TYPE): Description
+	
+	Returns:
+		TYPE: Description
+	"""
+	
+	# 查找叶子节点
+	dep = 0
+	while r and not r.isLeaf():
+		d = dep%k
+
+		if p[d]<r.value[0][d] and r.l_node:
+			r = r.l_node
+		elif p[d]>=r.value[0][d] and r.r_node:
+			r = r.r_node
+		else:
+			break
+
+		dep += 1
+
+	if not r:
+		return None
+
+	def update_best(n, node_min, dis_min):
+		if not n: return node_min, dis_min
+
+		dis = calc_dis(n.value[0], p, k)
+
+		if dis<dis_min:
+			dis_min = dis
+			node_min = n
+
+		return node_min, dis_min
+
+	node_min = r
+	dis_min = calc_dis(r.value[0], p, k)
+
+	# 向上回溯
+	while r.p_node:
+		node_min, dis_min = update_best(r.p_node.l_node, node_min, dis_min)
+
+		node_min, dis_min = update_best(r.p_node.r_node, node_min, dis_min)
+
+		r = r.p_node
+
+	return node_min, dis_min
+
 def draw_point(ds):
 	X, Y = [], []
 	for p in ds:
@@ -193,6 +256,7 @@ def init():
 	plt.grid(True)
 	plt.xlabel('x')
 	plt.ylabel('y')
+	
 	draw_point(ds)
 
 def color_random():
@@ -201,7 +265,6 @@ def color_random():
 	b = random.randint(0, 255)
 
 	return '#%02X%02X%02X' % (r, g, b) 
-
 
 # animation function.  this is called sequentially
 def animate(i):
@@ -220,21 +283,48 @@ def draw():
 	label = ax.text([], [], '')
 
 	currentAxis = plt.gca()
-	colors = itertools.cycle(["#FF6633", "g", "#3366FF", "c", "m", "y", '#EB70AA', '#0099FF', '#66FFFF'])
 
-	anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(history), interval=500, repeat=False, blit=False)
+	anim = animation.FuncAnimation(fig, animate, init_func=init, frames=len(history), interval=2, repeat=False, blit=False)
 	plt.show()
+
+	anim.save('kd_tree-build.gif', fps=2, writer='imagemagick')
 
 if __name__=='__main__':
 	global history, ds
 	history = list()
 
-	ds = [[(2, 3), ], [(5, 4), ], [(9, 6), ], [(4, 7), ], [(8, 1), ], [(7, 2), ]]
+	ds = list()
+	for i in range(3000):
+		x = round(random.random()*10, 3)
+		y = round(random.random()*10, 3)
+		ds.append([(x, y), ])
 
 	r = init_kd(ds, 2)
 
 	draw()
 
+	# 测试搜索效率
+	t_s = time.time()
 
+	for i in range(100):
+		p, p_dis = search_kd(r, 2, [4, 4])
+	t_e = time.time()
+
+	print('KD Time : %s' % (t_e-t_s))
+
+	# 测试搜索效率
+	t_s = time.time()
+
+	for i in range(100):
+		node_min = ds[0]
+		dis_min = 10000.0
+		for j in range(len(ds)):
+			dis = calc_dis(ds[j][0], [4, 4], 2)
+			if dis<dis_min:
+				dis_min = dis
+				node_min = ds[j]
+	t_e = time.time()
+
+	print('Time : %s' % (t_e-t_s))
 
 
